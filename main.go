@@ -302,7 +302,7 @@ func main() {
 	server.Use(sessions.Sessions("mysession", store))
 
 	server.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000"},
+		AllowOrigins:     []string{"https://diploma-tau.vercel.app/"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Content-Type", "Authorization", "X-Requested-With"},
 		AllowCredentials: true,
@@ -442,7 +442,7 @@ func signOut(c *gin.Context) {
 }
 
 func handleAuthSuccess(c *gin.Context) {
-	redirectURL := c.DefaultQuery("redirect", "http://localhost:3000")
+	redirectURL := c.DefaultQuery("redirect", "https://diploma-tau.vercel.app/")
 
 	session := sessions.Default(c)
 	userID := session.Get("user_id")
@@ -451,7 +451,7 @@ func handleAuthSuccess(c *gin.Context) {
 
 	if userID == nil {
 		log.Println("Сессия не установлена, перенаправление на страницу входа")
-		c.Redirect(http.StatusTemporaryRedirect, "http://localhost:3000/signin?error=session_failed")
+		c.Redirect(http.StatusTemporaryRedirect, "https://diploma-tau.vercel.app//signin?error=session_failed")
 		return
 	}
 
@@ -1292,7 +1292,7 @@ func handleGoogleCallback(c *gin.Context) {
 	if redirectType == "signin" {
 		if result.RowsAffected == 0 {
 			log.Printf("Пользователь с email %s не найден", googleUser.Email)
-			c.Redirect(http.StatusTemporaryRedirect, "http://localhost:3000/signin?error=user_not_found")
+			c.Redirect(http.StatusTemporaryRedirect, "https://diploma-tau.vercel.app//signin?error=user_not_found")
 			return
 		}
 
@@ -1308,10 +1308,10 @@ func handleGoogleCallback(c *gin.Context) {
 
 		log.Printf("Сессия установлена для пользователя ID=%d", user.ID)
 
-		c.Redirect(http.StatusTemporaryRedirect, "http://localhost:3000?login_success=true")
+		c.Redirect(http.StatusTemporaryRedirect, "https://diploma-tau.vercel.app/?login_success=true")
 	} else {
 		if result.RowsAffected > 0 {
-			c.Redirect(http.StatusTemporaryRedirect, "http://localhost:3000/signup?error=email_exists")
+			c.Redirect(http.StatusTemporaryRedirect, "https://diploma-tau.vercel.app//signup?error=email_exists")
 			return
 		}
 
@@ -1334,7 +1334,7 @@ func handleGoogleCallback(c *gin.Context) {
 
 		if err := db.Create(&newUser).Error; err != nil {
 			log.Printf("Ошибка создания пользователя: %v", err)
-			c.Redirect(http.StatusTemporaryRedirect, "http://localhost:3000/signup?error=registration_failed")
+			c.Redirect(http.StatusTemporaryRedirect, "https://diploma-tau.vercel.app//signup?error=registration_failed")
 			return
 		}
 
@@ -1350,7 +1350,7 @@ func handleGoogleCallback(c *gin.Context) {
 
 		log.Printf("Сессия установлена для нового пользователя ID=%d", newUser.ID)
 
-		c.Redirect(http.StatusTemporaryRedirect, "http://localhost:3000?login_success=true")
+		c.Redirect(http.StatusTemporaryRedirect, "https://diploma-tau.vercel.app/?login_success=true")
 	}
 }
 
