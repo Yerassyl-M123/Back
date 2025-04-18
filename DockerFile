@@ -1,6 +1,8 @@
-FROM golang:1.19.10-alpine
+FROM golang:1.23-alpine 
 
 WORKDIR /app
+
+RUN apk add --no-cache ca-certificates tzdata
 
 COPY go.mod go.sum ./
 RUN go mod download
@@ -9,6 +11,11 @@ COPY . .
 RUN mkdir -p /app/uploads/profiles /app/uploads/scanned
 
 RUN go build -o main .
+
+RUN adduser -D -g '' appuser && \
+    chown -R appuser:appuser /app
+
+USER appuser
 
 EXPOSE 8080
 

@@ -354,13 +354,12 @@ func main() {
 
 	server.POST("/analyze-product", authMiddleware(), analyzeProduct)
 
-	// port := os.Getenv("PORT")
-	// if port == "" {
-	// 	port = "8080"
-	// }
-	// server.Run(":" + port)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	server.Run(":" + port)
 
-	server.Run(":8080")
 }
 
 func signUp(c *gin.Context) {
