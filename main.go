@@ -297,12 +297,11 @@ func main() {
 		// Secure: false,
 		SameSite: http.SameSiteNoneMode,
 		// SameSite: http.SameSiteLaxMode,
-		Domain: "",
 	})
 	server.Use(sessions.Sessions("mysession", store))
 
 	server.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"https://diploma-tau.vercel.app/"},
+		AllowOrigins:     []string{"https://diploma-tau.vercel.app"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Content-Type", "Authorization", "X-Requested-With"},
 		AllowCredentials: true,
@@ -451,7 +450,7 @@ func handleAuthSuccess(c *gin.Context) {
 
 	if userID == nil {
 		log.Println("Сессия не установлена, перенаправление на страницу входа")
-		c.Redirect(http.StatusTemporaryRedirect, "https://diploma-tau.vercel.app//signin?error=session_failed")
+		c.Redirect(http.StatusTemporaryRedirect, "https://diploma-tau.vercel.app/signin?error=session_failed")
 		return
 	}
 
@@ -1292,7 +1291,7 @@ func handleGoogleCallback(c *gin.Context) {
 	if redirectType == "signin" {
 		if result.RowsAffected == 0 {
 			log.Printf("Пользователь с email %s не найден", googleUser.Email)
-			c.Redirect(http.StatusTemporaryRedirect, "https://diploma-tau.vercel.app//signin?error=user_not_found")
+			c.Redirect(http.StatusTemporaryRedirect, "https://diploma-tau.vercel.app/signin?error=user_not_found")
 			return
 		}
 
@@ -1311,7 +1310,7 @@ func handleGoogleCallback(c *gin.Context) {
 		c.Redirect(http.StatusTemporaryRedirect, "https://diploma-tau.vercel.app/?login_success=true")
 	} else {
 		if result.RowsAffected > 0 {
-			c.Redirect(http.StatusTemporaryRedirect, "https://diploma-tau.vercel.app//signup?error=email_exists")
+			c.Redirect(http.StatusTemporaryRedirect, "https://diploma-tau.vercel.app/signup?error=email_exists")
 			return
 		}
 
@@ -1334,7 +1333,7 @@ func handleGoogleCallback(c *gin.Context) {
 
 		if err := db.Create(&newUser).Error; err != nil {
 			log.Printf("Ошибка создания пользователя: %v", err)
-			c.Redirect(http.StatusTemporaryRedirect, "https://diploma-tau.vercel.app//signup?error=registration_failed")
+			c.Redirect(http.StatusTemporaryRedirect, "https://diploma-tau.vercel.app/signup?error=registration_failed")
 			return
 		}
 
