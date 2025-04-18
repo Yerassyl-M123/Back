@@ -292,8 +292,9 @@ func main() {
 		MaxAge:   30 * 60,
 		HttpOnly: true,
 		// Secure:   true, // If local - false
-		Secure:   false,
-		SameSite: http.SameSiteNoneMode,
+		Secure: false,
+		// SameSite: http.SameSiteNoneMode,
+		SameSite: http.SameSiteLaxMode,
 	})
 	server.Use(sessions.Sessions("mysession", store))
 
@@ -353,11 +354,13 @@ func main() {
 
 	server.POST("/analyze-product", authMiddleware(), analyzeProduct)
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-	server.Run(":" + port)
+	// port := os.Getenv("PORT")
+	// if port == "" {
+	// 	port = "8080"
+	// }
+	// server.Run(":" + port)
+
+	server.Run(":8080")
 }
 
 func signUp(c *gin.Context) {
