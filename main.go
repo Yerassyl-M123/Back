@@ -268,7 +268,7 @@ func main() {
 	}
 
 	googleOauthConfig = &oauth2.Config{
-		RedirectURL:  "http://localhost:8080/auth/google/callback",
+		RedirectURL:  "https://back-c6rh.onrender.com/auth/google/callback",
 		ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
 		ClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
 		Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"},
@@ -291,10 +291,10 @@ func main() {
 		Path:     "/",
 		MaxAge:   30 * 60,
 		HttpOnly: true,
-		// Secure:   true, // If local - false
-		Secure: false,
-		// SameSite: http.SameSiteNoneMode,
-		SameSite: http.SameSiteLaxMode,
+		Secure:   true, // If local - false
+		// Secure: false,
+		SameSite: http.SameSiteNoneMode,
+		// SameSite: http.SameSiteLaxMode,
 	})
 	server.Use(sessions.Sessions("mysession", store))
 

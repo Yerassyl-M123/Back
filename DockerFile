@@ -10,7 +10,7 @@ RUN go mod download
 COPY . .
 RUN mkdir -p /app/uploads/profiles /app/uploads/scanned
 
-RUN go build -o main .
+RUN go build -o app .
 
 RUN adduser -D -g '' appuser && \
     chown -R appuser:appuser /app
@@ -19,4 +19,4 @@ USER appuser
 
 EXPOSE 8080
 
-CMD ["./main"]
+CMD ["./app"]
