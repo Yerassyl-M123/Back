@@ -263,9 +263,11 @@ func updatePassword(c *gin.Context) {
 }
 
 func main() {
-	if err := godotenv.Load(); err != nil {
-		log.Fatalf("Error loading .env file: %v", err)
-	}
+	// if err := godotenv.Load(); err != nil {
+	// 	log.Fatalf("Error loading .env file: %v", err)
+	// }
+
+	godotenv.Load()
 
 	googleOauthConfig = &oauth2.Config{
 		RedirectURL:  "https://back-c6rh.onrender.com/auth/google/callback",
