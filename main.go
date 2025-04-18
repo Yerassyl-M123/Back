@@ -297,6 +297,7 @@ func main() {
 		// Secure: false,
 		SameSite: http.SameSiteNoneMode,
 		// SameSite: http.SameSiteLaxMode,
+		Domain: "",
 	})
 	server.Use(sessions.Sessions("mysession", store))
 
@@ -419,9 +420,23 @@ func signIn(c *gin.Context) {
 
 func signOut(c *gin.Context) {
 	session := sessions.Default(c)
+
+	session.Options(sessions.Options{
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteNoneMode,
+	})
+
 	session.Clear()
-	session.Options(sessions.Options{MaxAge: -1})
-	session.Save()
+	if err := session.Save(); err != nil {
+		log.Printf("Ошибка при удалении сессии: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка при выходе из системы"})
+		return
+	}
+
+	c.SetCookie("mysession", "", -1, "/", "", true, true)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
 }
