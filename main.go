@@ -301,7 +301,7 @@ func main() {
 	server.Use(sessions.Sessions("mysession", store))
 
 	server.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"https://diploma-tau.vercel.app"},
+		AllowOrigins:     []string{"https://diploma-tau.vercel.app", "https://diploma-yerassyl-m123s-projects.vercel.app", "https://diploma-git-master-yerassyl-m123s-projects.vercel.app"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Content-Type", "Authorization", "X-Requested-With"},
 		AllowCredentials: true,
@@ -408,7 +408,10 @@ func signIn(c *gin.Context) {
 
 	session := sessions.Default(c)
 	session.Options(sessions.Options{
-		MaxAge: 30 * 60,
+		MaxAge:   30 * 60,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteNoneMode,
 	})
 	session.Set("user_id", user.ID)
 	session.Set("user_role", user.Role)
