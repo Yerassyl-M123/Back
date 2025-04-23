@@ -330,17 +330,17 @@ func main() {
 	server.POST("/verify-code", verifyCode)
 	server.POST("/update-password", updatePassword)
 
-	server.GET("/recipes", getRecipes)
-	server.GET("/recipes/:id", getRecipeByID)
+	server.GET("/recipes", authMiddleware(), getRecipes)
+	server.GET("/recipes/:id", authMiddleware(), getRecipeByID)
 	server.POST("/my-recipes", authMiddleware(), createRecipe)
 	server.GET("/my-recipes", authMiddleware(), getMyRecipes)
 	server.PUT("/my-recipes/:id", authMiddleware(), updateRecipe)
 	server.DELETE("/my-recipes/:id", authMiddleware(), deleteRecipe)
 
-	server.POST("/products", addProduct)
-	server.GET("/products", getProducts)
+	server.POST("/products", authMiddleware(), addProduct)
+	server.GET("/products", authMiddleware(), getProducts)
 	server.DELETE("/products/:id", authMiddleware(), deleteProduct)
-	server.POST("/search-recipes", searchRecipesByProducts)
+	server.POST("/search-recipes", authMiddleware(), searchRecipesByProducts)
 
 	server.POST("/meal-plan", authMiddleware(), addToMealPlan)
 	server.GET("/meal-plan", authMiddleware(), getMealPlanByDate)
@@ -358,7 +358,7 @@ func main() {
 	server.POST("/favorite-recipes/:id", authMiddleware(), addToFavorites)
 	server.DELETE("/favorite-recipes/:id", authMiddleware(), removeFromFavorites)
 	server.GET("/favorite-recipes", authMiddleware(), getFavoriteRecipes)
-	server.GET("/search-recipes", getRecipesByName)
+	server.GET("/search-recipes", authMiddleware(), getRecipesByName)
 
 	server.GET("/auth/google", handleGoogleLogin)
 	server.GET("/auth/google/callback", handleGoogleCallback)
