@@ -181,9 +181,18 @@ func generateCode() string {
 }
 
 func sendEmail(to, code string) error {
-	auth := smtp.PlainAuth("", "ymeirkhan@mail.ru", "K1rdTt89ewT1nrbVddmm", "smtp.mail.ru")
+	username := os.Getenv("EMAIL_USERNAME")
+	password := os.Getenv("EMAIL_PASSWORD")
+	host := os.Getenv("SMTP_HOST")
+	port := os.Getenv("SMTP_PORT")
+
+	if username == "" || password == "" || host == "" || port == "" {
+		return fmt.Errorf("не настроены переменные окружения для отправки email")
+	}
+
+	auth := smtp.PlainAuth("", username, password, host)
 	msg := []byte("Subject: Код для восстановления пароля\n\nВаш код: " + code)
-	return smtp.SendMail("smtp.mail.ru:587", auth, "ymeirkhan@mail.ru", []string{to}, msg)
+	return smtp.SendMail(host+":"+port, auth, username, []string{to}, msg)
 }
 
 func resetPassword(c *gin.Context) {
