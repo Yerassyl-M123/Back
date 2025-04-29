@@ -312,7 +312,7 @@ func main() {
 	server.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"https://diploma-tau.vercel.app", "https://diploma-yerassyl-m123s-projects.vercel.app", "https://diploma-git-master-yerassyl-m123s-projects.vercel.app"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Content-Type", "Authorization", "X-Requested-With", "Origin"},
+		AllowHeaders:     []string{"Content-Type", "Authorization", "X-Requested-With", "Origin", "X-Mobile-Safari"},
 		AllowCredentials: true,
 		ExposeHeaders:    []string{"Content-Length", "Set-Cookie"},
 		MaxAge:           12 * time.Hour,
