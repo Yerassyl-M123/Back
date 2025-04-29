@@ -304,15 +304,15 @@ func main() {
 		HttpOnly: true,
 		Secure:   true, // If local - false
 		// Secure: false,
-		SameSite: http.SameSiteNoneMode,
-		// SameSite: http.SameSiteLaxMode,
+		// SameSite: http.SameSiteNoneMode,
+		SameSite: http.SameSiteLaxMode,
 	})
 	server.Use(sessions.Sessions("mysession", store))
 
 	server.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"https://diploma-tau.vercel.app", "https://diploma-yerassyl-m123s-projects.vercel.app", "https://diploma-git-master-yerassyl-m123s-projects.vercel.app"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Content-Type", "Authorization", "X-Requested-With"},
+		AllowHeaders:     []string{"Content-Type", "Authorization", "X-Requested-With", "Origin"},
 		AllowCredentials: true,
 		ExposeHeaders:    []string{"Content-Length", "Set-Cookie"},
 		MaxAge:           12 * time.Hour,
@@ -490,6 +490,26 @@ func authMiddleware() gin.HandlerFunc {
 func CheckAuth(c *gin.Context) {
 	session := sessions.Default(c)
 	userID := session.Get("user_id")
+
+	if userID == nil {
+		sidParam := c.Query("sid")
+		if sidParam != "" {
+			sid, err := strconv.Atoi(sidParam)
+			if err == nil && sid > 0 {
+				session.Set("user_id", uint(sid))
+
+				var user User
+				if err := db.First(&user, sid).Error; err == nil {
+					session.Set("user_role", user.Role)
+					if err := session.Save(); err != nil {
+						log.Printf("Ошибка сохранения сессии: %v", err)
+					} else {
+						userID = uint(sid)
+					}
+				}
+			}
+		}
+	}
 
 	log.Printf("CheckAuth: userID=%v", userID)
 
@@ -1308,6 +1328,7 @@ func handleGoogleCallback(c *gin.Context) {
 		}
 
 		session := sessions.Default(c)
+		session.Clear()
 		session.Set("user_id", user.ID)
 		session.Set("user_role", user.Role)
 
@@ -1317,9 +1338,26 @@ func handleGoogleCallback(c *gin.Context) {
 			return
 		}
 
+		c.SetCookie(
+			"login_status",
+			"success",
+			3600,
+			"/",
+			"",
+			true,
+			false,
+		)
+
 		log.Printf("Сессия установлена для пользователя ID=%d", user.ID)
 
-		c.Redirect(http.StatusTemporaryRedirect, "https://diploma-tau.vercel.app/?login_success=true")
+		userAgent := c.Request.UserAgent()
+		isMobile := strings.Contains(userAgent, "Mobile") || strings.Contains(userAgent, "Android")
+
+		if isMobile {
+			c.Redirect(http.StatusTemporaryRedirect, "https://diploma-tau.vercel.app/?login_success=true&mobile=true&sid="+strconv.Itoa(int(user.ID)))
+		} else {
+			c.Redirect(http.StatusTemporaryRedirect, "https://diploma-tau.vercel.app/?login_success=true")
+		}
 	} else {
 		if result.RowsAffected > 0 {
 			c.Redirect(http.StatusTemporaryRedirect, "https://diploma-tau.vercel.app/signup?error=email_exists")
@@ -1350,6 +1388,7 @@ func handleGoogleCallback(c *gin.Context) {
 		}
 
 		session := sessions.Default(c)
+		session.Clear()
 		session.Set("user_id", newUser.ID)
 		session.Set("user_role", newUser.Role)
 
@@ -1359,9 +1398,26 @@ func handleGoogleCallback(c *gin.Context) {
 			return
 		}
 
+		c.SetCookie(
+			"login_status",
+			"success",
+			3600,
+			"/",
+			"",
+			true,
+			false,
+		)
+
 		log.Printf("Сессия установлена для нового пользователя ID=%d", newUser.ID)
 
-		c.Redirect(http.StatusTemporaryRedirect, "https://diploma-tau.vercel.app/?login_success=true")
+		userAgent := c.Request.UserAgent()
+		isMobile := strings.Contains(userAgent, "Mobile") || strings.Contains(userAgent, "Android")
+
+		if isMobile {
+			c.Redirect(http.StatusTemporaryRedirect, "https://diploma-tau.vercel.app/?login_success=true&mobile=true&sid="+strconv.Itoa(int(newUser.ID)))
+		} else {
+			c.Redirect(http.StatusTemporaryRedirect, "https://diploma-tau.vercel.app/?login_success=true")
+		}
 	}
 }
 
