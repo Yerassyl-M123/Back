@@ -491,7 +491,70 @@ func CheckAuth(c *gin.Context) {
 	session := sessions.Default(c)
 	userID := session.Get("user_id")
 
-	log.Printf("CheckAuth: userID=%v", userID)
+	log.Printf("CheckAuth: Начало проверки. UserAgent: %s", c.Request.UserAgent())
+
+	if userID == nil {
+		sidParam := c.Query("sid")
+		if sidParam != "" {
+			log.Printf("CheckAuth: Найден sid в параметрах: %s", sidParam)
+			sid, err := strconv.Atoi(sidParam)
+			if err == nil && sid > 0 {
+				session.Set("user_id", uint(sid))
+
+				var user User
+				if err := db.First(&user, sid).Error; err == nil {
+					session.Set("user_role", user.Role)
+					session.Options(sessions.Options{
+						Path:     "/",
+						MaxAge:   30 * 60,
+						HttpOnly: true,
+						Secure:   true,
+						SameSite: http.SameSiteNoneMode,
+					})
+					if err := session.Save(); err != nil {
+						log.Printf("Ошибка сохранения сессии: %v", err)
+					} else {
+						log.Printf("CheckAuth: Сессия успешно создана из sid: %d", sid)
+						userID = uint(sid)
+						c.SetCookie(
+							"auth_sid",
+							sidParam,
+							3600,
+							"/",
+							"",
+							true,
+							false,
+						)
+					}
+				} else {
+					log.Printf("CheckAuth: Пользователь с id=%d не найден: %v", sid, err)
+				}
+			}
+		}
+	}
+
+	if userID == nil {
+		sidCookie, err := c.Cookie("auth_sid")
+		if err == nil && sidCookie != "" {
+			sid, err := strconv.Atoi(sidCookie)
+			if err == nil && sid > 0 {
+				log.Printf("CheckAuth: Восстановление из auth_sid cookie: %d", sid)
+				session.Set("user_id", uint(sid))
+
+				var user User
+				if err := db.First(&user, sid).Error; err == nil {
+					session.Set("user_role", user.Role)
+					if err := session.Save(); err != nil {
+						log.Printf("Ошибка сохранения сессии: %v", err)
+					} else {
+						userID = uint(sid)
+					}
+				}
+			}
+		}
+	}
+
+	log.Printf("CheckAuth: Результат проверки userID=%v", userID)
 
 	if userID == nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Не авторизован"})
