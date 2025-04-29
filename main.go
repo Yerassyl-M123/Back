@@ -426,7 +426,19 @@ func signIn(c *gin.Context) {
 	session.Set("user_role", user.Role)
 	session.Save()
 
-	c.JSON(http.StatusOK, gin.H{"message": "Login successful"})
+	c.SetCookie(
+		"auth_sid",
+		strconv.Itoa(int(user.ID)),
+		3600,
+		"/",
+		"",
+		true,
+		false,
+	)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Login successful", "userId": user.ID,
+	})
 }
 
 func signOut(c *gin.Context) {
@@ -473,7 +485,47 @@ func authMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		session := sessions.Default(c)
 		userID := session.Get("user_id")
-		userRole := session.Get("user_role")
+
+		isMobile := strings.Contains(c.GetHeader("User-Agent"), "Mobile") ||
+			strings.Contains(c.GetHeader("User-Agent"), "iPhone") ||
+			c.GetHeader("X-Mobile-Safari") == "true"
+
+		if userID == nil {
+			sidCookie, err := c.Cookie("auth_sid")
+			if err == nil && sidCookie != "" {
+				sid, err := strconv.Atoi(sidCookie)
+				if err == nil && sid > 0 {
+					session.Set("user_id", uint(sid))
+
+					var user User
+					if err := db.First(&user, sid).Error; err == nil {
+						session.Set("user_role", user.Role)
+						session.Save()
+						userID = uint(sid)
+					}
+				}
+			}
+		}
+
+		if userID == nil {
+			sidParam := c.Query("sid")
+			if sidParam != "" {
+				sid, err := strconv.Atoi(sidParam)
+				if err == nil && sid > 0 {
+					var user User
+					if err := db.First(&user, sid).Error; err == nil {
+						session.Set("user_id", uint(sid))
+						session.Set("user_role", user.Role)
+						session.Save()
+						userID = uint(sid)
+
+						if isMobile {
+							c.Header("X-Auth-Sid", sidParam)
+						}
+					}
+				}
+			}
+		}
 
 		if userID == nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
@@ -482,7 +534,7 @@ func authMiddleware() gin.HandlerFunc {
 		}
 
 		c.Set("user_id", userID.(uint))
-		c.Set("user_role", userRole.(string))
+		c.Set("user_role", session.Get("user_role").(string))
 		c.Next()
 	}
 }
