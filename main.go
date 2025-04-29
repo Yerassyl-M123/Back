@@ -304,8 +304,8 @@ func main() {
 		HttpOnly: true,
 		Secure:   true, // If local - false
 		// Secure: false,
-		// SameSite: http.SameSiteNoneMode,
-		SameSite: http.SameSiteLaxMode,
+		SameSite: http.SameSiteNoneMode,
+		// SameSite: http.SameSiteLaxMode,
 	})
 	server.Use(sessions.Sessions("mysession", store))
 
@@ -490,26 +490,6 @@ func authMiddleware() gin.HandlerFunc {
 func CheckAuth(c *gin.Context) {
 	session := sessions.Default(c)
 	userID := session.Get("user_id")
-
-	if userID == nil {
-		sidParam := c.Query("sid")
-		if sidParam != "" {
-			sid, err := strconv.Atoi(sidParam)
-			if err == nil && sid > 0 {
-				session.Set("user_id", uint(sid))
-
-				var user User
-				if err := db.First(&user, sid).Error; err == nil {
-					session.Set("user_role", user.Role)
-					if err := session.Save(); err != nil {
-						log.Printf("Ошибка сохранения сессии: %v", err)
-					} else {
-						userID = uint(sid)
-					}
-				}
-			}
-		}
-	}
 
 	log.Printf("CheckAuth: userID=%v", userID)
 
@@ -1339,8 +1319,8 @@ func handleGoogleCallback(c *gin.Context) {
 		}
 
 		c.SetCookie(
-			"login_status",
-			"success",
+			"auth_sid",
+			strconv.Itoa(int(user.ID)),
 			3600,
 			"/",
 			"",
@@ -1351,7 +1331,12 @@ func handleGoogleCallback(c *gin.Context) {
 		log.Printf("Сессия установлена для пользователя ID=%d", user.ID)
 
 		userAgent := c.Request.UserAgent()
-		isMobile := strings.Contains(userAgent, "Mobile") || strings.Contains(userAgent, "Android")
+		isMobile := strings.Contains(userAgent, "Mobile") ||
+			strings.Contains(userAgent, "Android") ||
+			strings.Contains(userAgent, "iPhone") ||
+			strings.Contains(userAgent, "iPad")
+
+		log.Printf("User Agent: %s, isMobile: %t", userAgent, isMobile)
 
 		if isMobile {
 			c.Redirect(http.StatusTemporaryRedirect, "https://diploma-tau.vercel.app/?login_success=true&mobile=true&sid="+strconv.Itoa(int(user.ID)))
@@ -1399,8 +1384,8 @@ func handleGoogleCallback(c *gin.Context) {
 		}
 
 		c.SetCookie(
-			"login_status",
-			"success",
+			"auth_sid",
+			strconv.Itoa(int(user.ID)),
 			3600,
 			"/",
 			"",
