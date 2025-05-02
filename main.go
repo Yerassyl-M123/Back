@@ -1842,9 +1842,107 @@ func handleChat(c *gin.Context) {
 		return
 	}
 
-	userID = userID.(uint)
+	var user User
+	if err := db.First(&user, userID).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка получения данных пользователя"})
+		return
+	}
 
-	response := "Я понимаю ваши чувства. Расскажите подробнее, что вас беспокоит?"
+	systemPrompt := `Ты профессиональный психолог и диетолог, специализирующийся на поддержке людей с проблемами питания и веса. 
+    Твоя задача - оказывать эмоциональную поддержку, давать практические советы и мотивировать пользователей.
+    
+    Важные правила:
+    1. Всегда проявляй эмпатию и понимание
+    2. Давай конкретные, но безопасные рекомендации
+    3. Поощряй здоровое отношение к питанию и телу
+    4. Если видишь признаки серьезных проблем, рекомендуй обратиться к специалисту
+    5. Используй позитивный и поддерживающий тон
+    6. Избегай критики и осуждения
+    
+    Контекст о пользователе:
+    Имя: ${user.FullName}
+    Текущий вес: ${user.Weight} кг
+    Целевой вес: ${user.GoalWeight} кг`
+
+	openAIReq := OpenAIRequest{
+		Model: "gpt-4o-mini",
+		Messages: []Message{
+			{
+				Role: "system",
+				Content: []Content{
+					{
+						Type: "text",
+						Text: systemPrompt,
+					},
+				},
+			},
+			{
+				Role: "user",
+				Content: []Content{
+					{
+						Type: "text",
+						Text: request.Message,
+					},
+				},
+			},
+		},
+		MaxTokens: 1000,
+	}
+
+	requestBody, err := json.Marshal(openAIReq)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка формирования запроса"})
+		return
+	}
+
+	apiKey := os.Getenv("OPENAI_API_KEY")
+	if apiKey == "" {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "API ключ не настроен"})
+		return
+	}
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	req, err := http.NewRequest("POST", "https://api.openai.com/v1/chat/completions", bytes.NewBuffer(requestBody))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка создания запроса"})
+		return
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		fallbackResponses := []string{
+			"Я здесь, чтобы поддержать вас. Расскажите подробнее о своих чувствах.",
+			"Ваши переживания важны. Давайте вместе найдем решение.",
+			"Я понимаю, что это может быть непросто. Как я могу вам помочь?",
+			"Вы делаете важные шаги к своей цели. Продолжайте двигаться вперед.",
+			"Каждый прогресс, даже самый маленький, имеет значение. Я верю в вас.",
+		}
+		randomResponse := fallbackResponses[rand.Intn(len(fallbackResponses))]
+		c.JSON(http.StatusOK, gin.H{"message": randomResponse})
+		return
+	}
+	defer resp.Body.Close()
+
+	var openAIResp OpenAIResponseData
+	if err := json.NewDecoder(resp.Body).Decode(&openAIResp); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка чтения ответа"})
+		return
+	}
+
+	if len(openAIResp.Choices) == 0 {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Нет ответа от API"})
+		return
+	}
+
+	response := openAIResp.Choices[0].Message.Content
+
+	response = strings.TrimSpace(response)
+	if len(response) > 1000 {
+		response = response[:1000] + "..."
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": response,
