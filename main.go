@@ -365,6 +365,8 @@ func main() {
 
 	server.POST("/analyze-product", authMiddleware(), analyzeProduct)
 
+	server.POST("/chat", authMiddleware(), handleChat)
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
@@ -1822,6 +1824,31 @@ func analyzeProduct(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, result)
+}
+
+func handleChat(c *gin.Context) {
+	var request struct {
+		Message string `json:"message"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный формат данных"})
+		return
+	}
+
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Не авторизован"})
+		return
+	}
+
+	userID = userID.(uint)
+
+	response := "Я понимаю ваши чувства. Расскажите подробнее, что вас беспокоит?"
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": response,
+	})
 }
 
 func saveMultipartFile(file *multipart.FileHeader, dst string) error {
