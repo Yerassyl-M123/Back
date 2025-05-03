@@ -25,6 +25,7 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/joho/godotenv"
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/oauth2"
@@ -32,6 +33,12 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
+
+type JWTClaim struct {
+	UserID uint   `json:"user_id"`
+	Role   string `json:"role"`
+	jwt.RegisteredClaims
+}
 
 type User struct {
 	ID             uint    `json:"id" gorm:"primaryKey"`
@@ -174,6 +181,7 @@ var db *gorm.DB
 var resetCodes = make(map[string]string)
 var googleOauthConfig *oauth2.Config
 var oauthStateString string
+var jwtKey = []byte(os.Getenv("JWT_SECRET_KEY"))
 
 func generateCode() string {
 	rand.Seed(time.Now().UnixNano())
@@ -322,6 +330,7 @@ func main() {
 
 	server.POST("/signup", signUp)
 	server.POST("/signin", signIn)
+	server.POST("/signinjwt", signInJWT)
 	server.POST("/signout", signOut)
 	server.GET("/check-auth", CheckAuth)
 	server.GET("/auth/success", handleAuthSuccess)
@@ -373,6 +382,37 @@ func main() {
 	}
 	server.Run(":" + port)
 
+}
+
+func generateJWT(userID uint, role string) (string, error) {
+	claims := JWTClaim{
+		UserID: userID,
+		Role:   role,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString(jwtKey)
+}
+
+func validateJWT(tokenString string) (*JWTClaim, error) {
+	token, err := jwt.ParseWithClaims(
+		tokenString,
+		&JWTClaim{},
+		func(token *jwt.Token) (interface{}, error) {
+			return jwtKey, nil
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+	claims, ok := token.Claims.(*JWTClaim)
+	if !ok || !token.Valid {
+		return nil, fmt.Errorf("invalid token claims")
+	}
+	return claims, nil
 }
 
 func signUp(c *gin.Context) {
@@ -443,6 +483,37 @@ func signIn(c *gin.Context) {
 	})
 }
 
+func signInJWT(c *gin.Context) {
+	var input User
+	var user User
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	if err := db.Where("email = ?", input.Email).First(&user).Error; err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
+		return
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.Password)); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
+		return
+	}
+
+	token, err := generateJWT(user.ID, user.Role)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка создания токена"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Login successful",
+		"userId":  user.ID,
+		"token":   token,
+	})
+}
+
 func signOut(c *gin.Context) {
 	session := sessions.Default(c)
 
@@ -485,6 +556,20 @@ func handleAuthSuccess(c *gin.Context) {
 
 func authMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		authHeader := c.GetHeader("Authorization")
+		if authHeader != "" {
+			bearerToken := strings.Split(authHeader, " ")
+			if len(bearerToken) == 2 {
+				claims, err := validateJWT(bearerToken[1])
+				if err == nil {
+					c.Set("user_id", claims.UserID)
+					c.Set("user_role", claims.Role)
+					c.Next()
+					return
+				}
+			}
+		}
+
 		session := sessions.Default(c)
 		userID := session.Get("user_id")
 
