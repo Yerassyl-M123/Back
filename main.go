@@ -329,6 +329,7 @@ func main() {
 	server.Static("/uploads", "./uploads")
 
 	server.POST("/signup", signUp)
+	server.POST("/signupjwt", signUpJWT)
 	server.POST("/signin", signIn)
 	server.POST("/signinjwt", signInJWT)
 	server.POST("/signout", signOut)
@@ -437,6 +438,47 @@ func signUp(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, gin.H{"message": "User created successfully"})
+}
+
+func signUpJWT(c *gin.Context) {
+	var user User
+	if err := c.ShouldBindJSON(&user); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный формат данных"})
+		return
+	}
+
+	if len(user.Password) < 8 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Пароль должен содержать не менее 8 символов"})
+		return
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), 14)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка при хешировании пароля"})
+		return
+	}
+
+	user.Password = string(hashedPassword)
+	user.Role = "user"
+
+	if err := db.Create(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка создания пользователя"})
+		return
+	}
+
+	token, err := generateJWT(user.ID, user.Role)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка создания токена"})
+		return
+	}
+
+	user.Password = ""
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "Пользователь успешно создан",
+		"user":    user,
+		"token":   token,
+	})
 }
 
 func signIn(c *gin.Context) {
